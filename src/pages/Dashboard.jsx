@@ -1,4 +1,5 @@
 import SpendingOverview from '../components/charts/SpendingOverview';
+import SavingsTrend from '../components/charts/SavingsTrend';
 
 function Dashboard() {
   return (
@@ -54,7 +55,7 @@ function Dashboard() {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <SpendingOverview />
-        {/* More charts will be added here later */}
+        <SavingsTrend />
       </div>
 
       {/* Recent Transactions */}
