@@ -1,3 +1,5 @@
+import SpendingOverview from '../components/charts/SpendingOverview';
+
 function Dashboard() {
   return (
     <div className="p-6">
@@ -47,6 +49,12 @@ function Dashboard() {
           <p className="text-3xl font-bold text-white mb-1">$2,260.00</p>
           <p className="text-white/80 text-sm">64.5% of income</p>
         </div>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <SpendingOverview />
+        {/* More charts will be added here later */}
       </div>
 
       {/* Recent Transactions */}
