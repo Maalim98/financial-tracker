@@ -8,9 +8,6 @@ import Signup from './pages/Signup';
 import Sidebar from './components/Sidebar';
 
 function App() {
-  // Temporarily set to true for development/testing
-  const isAuthenticated = true;
-
   return (
     <Router>
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
