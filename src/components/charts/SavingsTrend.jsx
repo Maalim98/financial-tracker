@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 ChartJS.register(
   CategoryScale,
@@ -26,7 +27,7 @@ function SavingsTrend() {
     datasets: [
       {
         label: 'Savings',
-        data: [1200, 1350, 1250, 1500, 1750, 2000],
+        data: [12000, 13500, 12500, 15000, 17500, 20000],
         borderColor: 'rgb(99, 102, 241)',
         backgroundColor: 'rgba(99, 102, 241, 0.1)',
         tension: 0.4,
@@ -34,7 +35,7 @@ function SavingsTrend() {
       },
       {
         label: 'Target',
-        data: [1000, 1200, 1400, 1600, 1800, 2000],
+        data: [10000, 12000, 14000, 16000, 18000, 20000],
         borderColor: 'rgb(249, 115, 22)',
         backgroundColor: 'rgba(249, 115, 22, 0.1)',
         borderDash: [5, 5],
@@ -67,7 +68,7 @@ function SavingsTrend() {
         },
         ticks: {
           color: 'rgb(156, 163, 175)',
-          callback: (value) => `$${value}`
+          callback: (value) => formatCurrency(value)
         }
       },
       x: {
@@ -92,11 +93,15 @@ function SavingsTrend() {
       <div className="mt-4 grid grid-cols-2 gap-4">
         <div className="bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-lg">
           <p className="text-sm text-gray-600 dark:text-gray-400">Current Savings</p>
-          <p className="text-xl font-bold text-indigo-600 dark:text-indigo-400">$2,000</p>
+          <p className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
+            {formatCurrency(20000)}
+          </p>
         </div>
         <div className="bg-orange-50 dark:bg-orange-900/30 p-4 rounded-lg">
           <p className="text-sm text-gray-600 dark:text-gray-400">Target Savings</p>
-          <p className="text-xl font-bold text-orange-600 dark:text-orange-400">$2,000</p>
+          <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
+            {formatCurrency(20000)}
+          </p>
         </div>
       </div>
     </div>

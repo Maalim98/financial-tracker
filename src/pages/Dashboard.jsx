@@ -1,5 +1,6 @@
 import SpendingOverview from '../components/charts/SpendingOverview';
 import SavingsTrend from '../components/charts/SavingsTrend';
+import { formatCurrency } from '../utils/formatCurrency';
 
 function Dashboard() {
   return (
@@ -21,7 +22,7 @@ function Dashboard() {
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-bold text-white mb-1">$5,240.00</p>
+          <p className="text-3xl font-bold text-white mb-1">{formatCurrency(52400)}</p>
           <p className="text-white/80 text-sm">+2.5% from last month</p>
         </div>
 
@@ -34,7 +35,7 @@ function Dashboard() {
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-bold text-white mb-1">$3,500.00</p>
+          <p className="text-3xl font-bold text-white mb-1">{formatCurrency(35000)}</p>
           <p className="text-white/80 text-sm">Last updated today</p>
         </div>
 
@@ -47,7 +48,7 @@ function Dashboard() {
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-bold text-white mb-1">$2,260.00</p>
+          <p className="text-3xl font-bold text-white mb-1">{formatCurrency(22600)}</p>
           <p className="text-white/80 text-sm">64.5% of income</p>
         </div>
       </div>
@@ -68,9 +69,9 @@ function Dashboard() {
         </div>
         <div className="space-y-4">
           {[
-            { type: 'expense', category: 'Groceries', amount: -120.50, date: '2024-03-15', icon: '🛒' },
-            { type: 'income', category: 'Salary', amount: 3500.00, date: '2024-03-01', icon: '💰' },
-            { type: 'expense', category: 'Utilities', amount: -85.00, date: '2024-03-10', icon: '⚡' },
+            { type: 'expense', category: 'Groceries', amount: -1205, date: '2024-03-15', icon: '🛒' },
+            { type: 'income', category: 'Salary', amount: 35000, date: '2024-03-01', icon: '💰' },
+            { type: 'expense', category: 'Utilities', amount: -850, date: '2024-03-10', icon: '⚡' },
           ].map((transaction, index) => (
             <div 
               key={index} 
@@ -88,7 +89,7 @@ function Dashboard() {
                   ? 'text-green-600 dark:text-green-400' 
                   : 'text-red-600 dark:text-red-400'
               }`}>
-                {transaction.type === 'income' ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
+                {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(transaction.amount))}
               </p>
             </div>
           ))}
