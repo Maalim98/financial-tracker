@@ -1,5 +1,5 @@
 import SpendingOverview from '../components/charts/SpendingOverview';
-import SavingsTrend from '../components/charts/SavingsTrend';
+import ExpenseTrend from '../components/charts/ExpenseTrend';
 import { formatCurrency } from '../utils/formatCurrency';
 
 function Dashboard() {
@@ -11,7 +11,7 @@ function Dashboard() {
         <p className="text-gray-600 dark:text-gray-400">Here's your financial overview</p>
       </div>
 
-      {/* Dashboard Overview */}
+      {/* Dashboard Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 rounded-2xl shadow-lg transform hover:scale-105 transition-transform duration-200">
           <div className="flex items-center justify-between mb-4">
@@ -53,10 +53,10 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Charts Section */}
+      {/* Two Most Important Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <SpendingOverview />
-        <SavingsTrend />
+        <ExpenseTrend />
       </div>
 
       {/* Recent Transactions */}

@@ -61,7 +61,7 @@ function SpendingOverview() {
       <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
         Monthly Spending Overview
       </h3>
-      <div className="h-80">
+      <div className="h-64">
         <Doughnut data={data} options={options} />
       </div>
     </div>
