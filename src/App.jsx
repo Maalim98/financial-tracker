@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import Expenses from './pages/Expenses';
 import Income from './pages/Income';
@@ -22,7 +23,11 @@ function App() {
           <main className="lg:ml-64 min-h-screen pt-[64px] lg:pt-0">
             <div className="p-4 lg:p-8">
               <Routes>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
                 <Route path="/expenses" element={<Expenses />} />
                 <Route path="/income" element={<Income />} />
                 <Route path="/goals" element={<Goals />} />
