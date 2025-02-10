@@ -1,6 +1,8 @@
 import SpendingOverview from '../components/charts/SpendingOverview';
 import ExpenseTrend from '../components/charts/ExpenseTrend';
 import { formatCurrency } from '../utils/formatCurrency';
+import BillReminders from '../components/BillReminders';
+import Notifications from '../components/Notifications';
 
 function Dashboard() {
   const transactions = [
@@ -129,6 +131,12 @@ function Dashboard() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Add new sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <BillReminders />
+        <Notifications />
       </div>
     </div>
   );

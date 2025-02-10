@@ -9,6 +9,9 @@ import Sidebar from './components/Sidebar';
 import Settings from './pages/Settings';
 import { ThemeProvider } from './context/ThemeContext';
 import Reports from './pages/Reports';
+import Calendar from './pages/Calendar';
+import Challenges from './pages/Challenges';
+import DebtTracker from './pages/DebtTracker';
 
 function App() {
   return (
@@ -23,10 +26,13 @@ function App() {
                 <Route path="/expenses" element={<Expenses />} />
                 <Route path="/income" element={<Income />} />
                 <Route path="/goals" element={<Goals />} />
+                <Route path="/calendar" element={<Calendar />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
-                <Route path="/settings" element={<Settings />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/challenges" element={<Challenges />} />
+                <Route path="/debt" element={<DebtTracker />} />
               </Routes>
             </div>
           </main>
