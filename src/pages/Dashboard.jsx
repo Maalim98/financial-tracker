@@ -153,7 +153,7 @@ function Dashboard() {
                           ? 'text-green-600 dark:text-green-400' 
                           : 'text-red-600 dark:text-red-400'
                       }`}>
-                        {transaction.type === 'income' ? '+' : '-'}
+                        {transaction.type === 'income' ? '+' : ''}
                         {formatCurrency(Math.abs(transaction.amount))}
                       </p>
                       <button

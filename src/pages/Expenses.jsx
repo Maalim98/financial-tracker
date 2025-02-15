@@ -4,8 +4,54 @@ import { useState, useEffect } from 'react';
 
 function Expenses() {
   const [expenses, setExpenses] = useState([]);
+  const [stats, setStats] = useState({
+    today: 0,
+    thisMonth: 0,
+    average: 0,
+    monthlyBudget: 35000,
+    monthlyPercentage: 0  // Initialize monthlyPercentage
+  });
 
-  // Fetch expenses
+  // Calculate stats from expenses
+  const calculateStats = (expenseData) => {
+    const today = new Date().toISOString().split('T')[0];
+    const thisMonth = new Date().getMonth();
+    
+    // Today's total
+    const todayExpenses = expenseData.filter(exp => 
+      new Date(exp.date).toISOString().split('T')[0] === today
+    ).reduce((sum, exp) => sum + Math.abs(exp.amount), 0);
+
+    // This month's total
+    const monthExpenses = expenseData.filter(exp => 
+      new Date(exp.date).getMonth() === thisMonth
+    ).reduce((sum, exp) => sum + Math.abs(exp.amount), 0);
+
+    // Average daily (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const last30DaysExpenses = expenseData.filter(exp => 
+      new Date(exp.date) >= thirtyDaysAgo
+    );
+    
+    const averageDaily = last30DaysExpenses.length > 0 
+      ? last30DaysExpenses.reduce((sum, exp) => sum + Math.abs(exp.amount), 0) / 30 
+      : 0;
+
+    // Calculate percentage of monthly budget
+    const monthlyPercentage = (monthExpenses / stats.monthlyBudget) * 100;
+
+    setStats({
+      today: todayExpenses,
+      thisMonth: monthExpenses,
+      average: averageDaily,
+      monthlyBudget: stats.monthlyBudget,
+      monthlyPercentage: monthlyPercentage || 0  // Provide default value
+    });
+  };
+
+  // Fetch expenses and calculate stats
   const fetchExpenses = async () => {
     try {
       const response = await fetch('http://localhost:5002/api/transactions', {
@@ -14,8 +60,9 @@ function Expenses() {
         }
       });
       const data = await response.json();
-      // Filter only expense transactions
-      setExpenses(data.filter(transaction => transaction.type === 'expense'));
+      const expenseData = data.filter(transaction => transaction.type === 'expense');
+      setExpenses(expenseData);
+      calculateStats(expenseData);
     } catch (error) {
       console.error('Error fetching expenses:', error);
     }
@@ -79,8 +126,8 @@ function Expenses() {
               </svg>
             </span>
           </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCurrency(2500)}</p>
-          <p className="text-sm text-red-600 dark:text-red-400">+12% from yesterday</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCurrency(stats.today)}</p>
+          <p className="text-sm text-red-600 dark:text-red-400">Today&apos;s spending</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
@@ -88,12 +135,14 @@ function Expenses() {
             <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">This Month</h3>
             <span className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
               <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </span>
           </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCurrency(22600)}</p>
-          <p className="text-sm text-indigo-600 dark:text-indigo-400">64.5% of monthly budget</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCurrency(stats.thisMonth)}</p>
+          <p className="text-sm text-indigo-600 dark:text-indigo-400">
+            {(stats.monthlyPercentage || 0).toFixed(1)}% of monthly budget
+          </p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
@@ -105,7 +154,7 @@ function Expenses() {
               </svg>
             </span>
           </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCurrency(1850)}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCurrency(stats.average)}</p>
           <p className="text-sm text-green-600 dark:text-green-400">Based on last 30 days</p>
         </div>
       </div>
@@ -124,7 +173,10 @@ function Expenses() {
               </p>
             </div>
             <div className="p-6">
-              <ExpenseForm onSuccess={fetchExpenses} />
+              <ExpenseForm onSuccess={() => {
+                console.log('Expense added, refreshing list...');
+                fetchExpenses();
+              }} />
             </div>
           </div>
         </div>
@@ -153,7 +205,7 @@ function Expenses() {
                         </div>
                         <div className="flex items-center space-x-4">
                           <p className="font-bold text-red-600 dark:text-red-400">
-                            -{formatCurrency(expense.amount)}
+                            {formatCurrency(Math.abs(expense.amount))}
                           </p>
                           <button
                             onClick={() => handleDeleteExpense(expense._id)}

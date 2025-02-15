@@ -70,16 +70,16 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
-    // Validate amount
-    if (amount <= 0) {
-      return res.status(400).json({ message: 'Amount must be greater than 0' });
+    // Validate amount (remove the > 0 check since we want to allow negative numbers)
+    if (amount === 0) {
+      return res.status(400).json({ message: 'Amount cannot be zero' });
     }
 
     const transaction = new Transaction({
       user: req.user.id,
       type,
       category,
-      amount,
+      amount,  // Store the amount as is (positive for income, negative for expense)
       description,
       date: date || Date.now(),
       icon
