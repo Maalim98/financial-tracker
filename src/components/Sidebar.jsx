@@ -23,7 +23,7 @@ function Sidebar() {
   return (
     <>
       {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-0 w-full bg-indigo-950 z-30">
+      <div className="lg:hidden fixed top-0 w-full bg-indigo-950 z-30 h-16">
         <div className="flex items-center justify-between p-4">
           <Link to="/" className="text-xl font-bold text-white">
             FinTrack
