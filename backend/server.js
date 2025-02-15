@@ -17,7 +17,9 @@ app.use(express.json());
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000 // Timeout after 5s instead of 30s
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+  retryWrites: true,
+  w: 'majority'
 })
 .then(() => {
   console.log('MongoDB connected successfully');
@@ -26,12 +28,16 @@ mongoose.connect(process.env.MONGODB_URI, {
   });
 })
 .catch(err => {
-  console.error('MongoDB connection error details:', {
+  console.error('MongoDB connection error:', {
     name: err.name,
     message: err.message,
     code: err.code,
     codeName: err.codeName
   });
+  console.log('Please check:');
+  console.log('1. MongoDB Atlas IP whitelist');
+  console.log('2. Network connectivity');
+  console.log('3. Database credentials');
   process.exit(1);
 });
 
@@ -46,7 +52,7 @@ app.get('/', (req, res) => {
 
 // Start server with error handling
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
 }).on('error', (err) => {
   console.error('Server error:', {

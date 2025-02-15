@@ -1,3 +1,4 @@
+import { useAuth } from '../context/AuthContext';
 import SpendingOverview from '../components/charts/SpendingOverview';
 import ExpenseTrend from '../components/charts/ExpenseTrend';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -5,6 +6,8 @@ import BillReminders from '../components/BillReminders';
 import Notifications from '../components/Notifications';
 
 function Dashboard() {
+  const { user } = useAuth();
+
   const transactions = [
     { type: 'expense', category: 'Groceries', amount: -1205, date: '2024-03-15', icon: '🛒', description: 'Weekly groceries at Carrefour' },
     { type: 'income', category: 'Salary', amount: 35000, date: '2024-03-01', icon: '💰', description: 'Monthly salary' },
@@ -15,7 +18,9 @@ function Dashboard() {
     <div className="p-6">
       {/* Welcome Section */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">Welcome back, User! 👋</h1>
+        <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">
+          Welcome back, {user?.name || 'User'}! 👋
+        </h1>
         <p className="text-gray-600 dark:text-gray-400">Here&apos;s your financial overview</p>
       </div>
 

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
+import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Expenses from './pages/Expenses';
 import Income from './pages/Income';
@@ -25,14 +26,40 @@ function App() {
               <Routes>
                 <Route path="/" element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <Layout>
+                      <Dashboard />
+                    </Layout>
                   </ProtectedRoute>
                 } />
-                <Route path="/expenses" element={<Expenses />} />
-                <Route path="/income" element={<Income />} />
-                <Route path="/goals" element={<Goals />} />
+                <Route path="/expenses" element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Expenses />
+                    </Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/income" element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Income />
+                    </Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/goals" element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Goals />
+                    </Layout>
+                  </ProtectedRoute>
+                } />
                 <Route path="/calendar" element={<Calendar />} />
-                <Route path="/settings" element={<Settings />} />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Settings />
+                    </Layout>
+                  </ProtectedRoute>
+                } />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/reports" element={<Reports />} />

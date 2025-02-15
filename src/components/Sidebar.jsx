@@ -1,9 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 function Sidebar() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
   
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -11,6 +13,11 @@ function Sidebar() {
 
   const isActiveLink = (path) => {
     return location.pathname === path ? 'bg-indigo-800 text-white' : 'text-gray-300 hover:bg-indigo-800 hover:text-white';
+  };
+
+  const handleLogout = () => {
+    logout();
+    // No need to navigate - ProtectedRoute will handle it
   };
 
   return (
@@ -115,16 +122,35 @@ function Sidebar() {
 
         {/* User Section */}
         <div className="absolute bottom-0 w-full p-4 bg-indigo-950">
-          <Link to="/login" className="flex items-center space-x-3 hover:bg-indigo-800 p-3 rounded-lg">
-            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+          {user ? (
+            <div className="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
+              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
+                <span className="text-white font-medium">
+                  {user.name[0].toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-white">{user.name}</p>
+                <button 
+                  onClick={handleLogout}
+                  className="text-xs text-indigo-300 hover:text-white"
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-white">Login</p>
-            </div>
-          </Link>
+          ) : (
+            <Link to="/login" className="flex items-center space-x-3 hover:bg-indigo-800 p-3 rounded-lg">
+              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-white">Login</p>
+              </div>
+            </Link>
+          )}
         </div>
       </div>
 
