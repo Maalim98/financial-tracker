@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const protectedRoutes = require('./routes/protected');
+const transactionRoutes = require('./routes/transactions');
 
 const app = express();
 
@@ -44,6 +45,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { formatCurrency } from '../../utils/formatCurrency';
 
-function ExpenseForm() {
+function ExpenseForm({ onSuccess }) {
   const [formData, setFormData] = useState({
     category: '',
     amount: '',
     date: new Date().toISOString().split('T')[0],
-    description: ''
+    description: '',
+    icon: ''
   });
 
   const categories = [
@@ -22,22 +23,61 @@ function ExpenseForm() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    if (name === 'category') {
+      // When category changes, update the icon too
+      const selectedCategory = categories.find(cat => cat.id === value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        icon: selectedCategory ? selectedCategory.icon : '💰'
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    // Will handle actual submission later
-    setFormData({
-      category: '',
-      amount: '',
-      date: new Date().toISOString().split('T')[0],
-      description: ''
-    });
+    try {
+      const response = await fetch('http://localhost:5002/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          type: 'expense',
+          category: categories.find(cat => cat.id === formData.category)?.label || formData.category,
+          amount: Number(formData.amount),
+          description: formData.description,
+          date: formData.date,
+          icon: formData.icon
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Expense added:', data);
+        // Reset form
+        setFormData({
+          category: '',
+          amount: '',
+          date: new Date().toISOString().split('T')[0],
+          description: '',
+          icon: ''
+        });
+        // Call the success callback to refresh the list
+        onSuccess();
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to add expense:', errorData.message);
+      }
+    } catch (error) {
+      console.error('Error adding expense:', error);
+    }
   };
 
   return (
@@ -82,6 +122,21 @@ function ExpenseForm() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Description
+          </label>
+          <input
+            type="text"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            placeholder="Enter description"
+            className="w-full px-4 py-2 rounded-lg border bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Date
           </label>
           <input
@@ -93,30 +148,14 @@ function ExpenseForm() {
             required
           />
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Description
-          </label>
-          <input
-            type="text"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Enter description"
-            className="w-full px-4 py-2 rounded-lg border bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-          />
-        </div>
       </div>
 
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform transition-all duration-200 hover:scale-[1.02]"
-        >
-          Add Expense
-        </button>
-      </div>
+      <button
+        type="submit"
+        className="w-full bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform transition-all duration-200 hover:scale-[1.02]"
+      >
+        Add Expense
+      </button>
     </form>
   );
 }
