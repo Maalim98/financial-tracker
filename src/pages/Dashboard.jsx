@@ -9,18 +9,29 @@ import { useState, useEffect } from 'react';
 function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchTransactions = async () => {
     try {
+      setIsLoading(true);
       const response = await fetch('http://localhost:5002/api/transactions', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch transactions');
+      }
+
       const data = await response.json();
-      setTransactions(data);
+      // Check if data is in the new format (with transactions and summary)
+      setTransactions(Array.isArray(data) ? data : data.transactions || []);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      setTransactions([]); // Set empty array on error
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -133,45 +144,51 @@ function Dashboard() {
         </div>
         <div className="p-6">
           <div className="space-y-4">
-            {transactions.map((transaction) => (
-              <div 
-                key={transaction._id} 
-                className="flex items-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <div className="h-12 w-12 flex items-center justify-center bg-gray-100 dark:bg-gray-600 rounded-xl mr-4">
-                  <span className="text-2xl">{transaction.icon}</span>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <p className="font-semibold text-gray-800 dark:text-gray-200">{transaction.category}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{transaction.description}</p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <p className={`font-bold ${
-                        transaction.type === 'income' 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : 'text-red-600 dark:text-red-400'
-                      }`}>
-                        {transaction.type === 'income' ? '+' : ''}
-                        {formatCurrency(Math.abs(transaction.amount))}
-                      </p>
-                      <button
-                        onClick={() => handleDeleteTransaction(transaction._id)}
-                        className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
+            {Array.isArray(transactions) && transactions.length > 0 ? (
+              transactions.map((transaction) => (
+                <div 
+                  key={transaction._id} 
+                  className="flex items-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <div className="h-12 w-12 flex items-center justify-center bg-gray-100 dark:bg-gray-600 rounded-xl mr-4">
+                    <span className="text-2xl">{transaction.icon}</span>
                   </div>
-                  <p className="text-sm text-gray-400 dark:text-gray-500">
-                    {new Date(transaction.date).toLocaleDateString()}
-                  </p>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <div>
+                        <p className="font-semibold text-gray-800 dark:text-gray-200">{transaction.category}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{transaction.description}</p>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <p className={`font-bold ${
+                          transaction.type === 'income' 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {transaction.type === 'income' ? '+' : ''}
+                          {formatCurrency(Math.abs(transaction.amount))}
+                        </p>
+                        <button
+                          onClick={() => handleDeleteTransaction(transaction._id)}
+                          className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">
+                      {new Date(transaction.date).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                No transactions found
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

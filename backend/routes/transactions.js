@@ -3,14 +3,176 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Transaction = require('../models/Transaction');
 
-// Get all transactions for a user
+// Get transactions with filters
 router.get('/', auth, async (req, res) => {
   try {
-    const transactions = await Transaction.find({ user: req.user.id })
-      .sort({ date: -1 });
-    res.json(transactions);
+    const {
+      dateRange,
+      startDate,
+      endDate,
+      category,
+      searchQuery,
+      sortBy = 'date',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build filter query
+    let query = { user: req.user.id };
+
+    // Date filtering
+    if (dateRange && dateRange !== 'all') {
+      const today = new Date();
+      let startDateTime;
+
+      switch (dateRange) {
+        case 'week':
+          startDateTime = new Date(today.setDate(today.getDate() - 7));
+          query.date = { $gte: startDateTime };
+          break;
+        case 'month':
+          startDateTime = new Date(today.setMonth(today.getMonth() - 1));
+          query.date = { $gte: startDateTime };
+          break;
+        case 'custom':
+          if (startDate && endDate) {
+            query.date = {
+              $gte: new Date(startDate),
+              $lte: new Date(endDate)
+            };
+          }
+          break;
+      }
+    }
+
+    // Category filtering
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+
+    // Search query
+    if (searchQuery) {
+      query.$or = [
+        { description: { $regex: searchQuery, $options: 'i' } },
+        { category: { $regex: searchQuery, $options: 'i' } }
+      ];
+    }
+
+    // Build sort object
+    let sortOptions = {};
+    switch (sortBy) {
+      case 'date':
+        sortOptions.date = sortOrder === 'asc' ? 1 : -1;
+        break;
+      case 'amount':
+        sortOptions.amount = sortOrder === 'asc' ? 1 : -1;
+        break;
+      case 'category':
+        sortOptions.category = sortOrder === 'asc' ? 1 : -1;
+        break;
+      default:
+        sortOptions.date = -1;
+    }
+
+    // Execute query with filters and sorting
+    const transactions = await Transaction.find(query)
+      .sort(sortOptions)
+      .exec();
+
+    // Calculate summary with proper date handling
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day
+    
+    const summary = {
+      total: transactions.reduce((sum, t) => sum + t.amount, 0),
+      count: transactions.length,
+      today: transactions.filter(t => {
+        const txDate = new Date(t.date);
+        txDate.setHours(0, 0, 0, 0);
+        return txDate.getTime() === today.getTime() && t.type === 'expense';
+      }).reduce((sum, t) => sum + Math.abs(t.amount), 0),
+      thisMonth: transactions.filter(t => 
+        new Date(t.date).getMonth() === today.getMonth() && t.type === 'expense'
+      ).reduce((sum, t) => sum + Math.abs(t.amount), 0),
+      byCategory: {}
+    };
+
+    // Group by category
+    transactions.forEach(t => {
+      if (!summary.byCategory[t.category]) {
+        summary.byCategory[t.category] = {
+          count: 0,
+          total: 0
+        };
+      }
+      summary.byCategory[t.category].count++;
+      summary.byCategory[t.category].total += t.amount;
+    });
+
+    res.json({
+      transactions,
+      summary
+    });
+
   } catch (error) {
     console.error('Get transactions error:', error);
+    res.status(500).json({ 
+      message: 'Server error',
+      error: error.message 
+    });
+  }
+});
+
+// Get available categories
+router.get('/categories', auth, async (req, res) => {
+  try {
+    const categories = await Transaction.distinct('category', { 
+      user: req.user.id 
+    });
+    res.json(categories);
+  } catch (error) {
+    console.error('Get categories error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get transaction statistics
+router.get('/stats', auth, async (req, res) => {
+  try {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const stats = await Transaction.aggregate([
+      { $match: { user: req.user.id } },
+      {
+        $facet: {
+          today: [
+            { $match: { 
+              date: { 
+                $gte: new Date(today.setHours(0, 0, 0, 0)),
+                $lt: new Date(today.setHours(23, 59, 59, 999))
+              }
+            }},
+            { $group: { _id: null, total: { $sum: '$amount' } }}
+          ],
+          thisMonth: [
+            { $match: { date: { $gte: firstDayOfMonth } }},
+            { $group: { _id: null, total: { $sum: '$amount' } }}
+          ],
+          average: [
+            { $group: { _id: null, avg: { $avg: '$amount' } }}
+          ]
+        }
+      }
+    ]);
+
+    res.json({
+      today: stats[0].today[0]?.total || 0,
+      thisMonth: stats[0].thisMonth[0]?.total || 0,
+      average: stats[0].average[0]?.avg || 0
+    });
+
+  } catch (error) {
+    console.error('Get stats error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

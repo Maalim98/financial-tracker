@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import Expenses from './pages/Expenses';
 import Income from './pages/Income';
@@ -18,20 +19,74 @@ function App() {
     <ThemeProvider>
       <Router>
         <Routes>
-          {/* All routes wrapped in Layout, no ProtectedRoute */}
-          <Route path="/" element={<Layout><Dashboard /></Layout>} />
-          <Route path="/expenses" element={<Layout><Expenses /></Layout>} />
-          <Route path="/income" element={<Layout><Income /></Layout>} />
-          <Route path="/goals" element={<Layout><Goals /></Layout>} />
-          <Route path="/calendar" element={<Layout><Calendar /></Layout>} />
-          <Route path="/settings" element={<Layout><Settings /></Layout>} />
-          <Route path="/reports" element={<Layout><Reports /></Layout>} />
-          <Route path="/challenges" element={<Layout><Challenges /></Layout>} />
-          <Route path="/debt" element={<Layout><DebtTracker /></Layout>} />
-          
-          {/* Auth pages without Layout */}
+          {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+
+          {/* Protected routes with Layout */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout>
+                <Dashboard />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/expenses" element={
+            <ProtectedRoute>
+              <Layout>
+                <Expenses />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/income" element={
+            <ProtectedRoute>
+              <Layout>
+                <Income />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/goals" element={
+            <ProtectedRoute>
+              <Layout>
+                <Goals />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/calendar" element={
+            <ProtectedRoute>
+              <Layout>
+                <Calendar />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Layout>
+                <Settings />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/reports" element={
+            <ProtectedRoute>
+              <Layout>
+                <Reports />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/challenges" element={
+            <ProtectedRoute>
+              <Layout>
+                <Challenges />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/debt" element={
+            <ProtectedRoute>
+              <Layout>
+                <DebtTracker />
+              </Layout>
+            </ProtectedRoute>
+          } />
         </Routes>
       </Router>
     </ThemeProvider>

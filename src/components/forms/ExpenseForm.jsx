@@ -51,13 +51,8 @@ function ExpenseForm({ onSuccess }) {
     e.preventDefault();
     setErrors({});
 
-    // Validate amount before submitting
-    if (Number(formData.amount) <= 0) {
-      setErrors(prev => ({ ...prev, amount: 'Amount must be greater than zero' }));
-      return;
-    }
-
     try {
+      console.log('Submitting expense...'); // Debug log
       const submitData = {
         type: 'expense',
         category: categories.find(cat => cat.id === formData.category)?.label || formData.category,
@@ -76,24 +71,32 @@ function ExpenseForm({ onSuccess }) {
         body: JSON.stringify(submitData)
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setFormData({
-          category: '',
-          amount: '',
-          date: new Date().toISOString().split('T')[0],
-          description: '',
-          icon: ''
-        });
-        if (onSuccess && typeof onSuccess === 'function') {
-          onSuccess();
-        }
-      } else {
+      if (!response.ok) {
         const errorData = await response.json();
-        setErrors(prev => ({ ...prev, submit: errorData.message }));
+        throw new Error(errorData.message || 'Failed to add expense');
+      }
+
+      const data = await response.json();
+      console.log('Expense added successfully:', data);
+      
+      // Reset form
+      setFormData({
+        category: '',
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        icon: ''
+      });
+
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (error) {
-      setErrors(prev => ({ ...prev, submit: 'Failed to add expense. Please try again.' }));
+      console.error('Error adding expense:', error);
+      setErrors(prev => ({ 
+        ...prev, 
+        submit: error.message || 'Failed to connect to server. Please try again.' 
+      }));
     }
   };
 

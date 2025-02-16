@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Sidebar from './Sidebar';
 
 export default function Layout({ children }) {
@@ -11,4 +12,8 @@ export default function Layout({ children }) {
       </main>
     </div>
   );
-} 
+}
+
+Layout.propTypes = {
+  children: PropTypes.node.isRequired
+}; 

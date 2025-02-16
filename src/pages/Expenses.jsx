@@ -4,27 +4,56 @@ import { useState, useEffect } from 'react';
 
 function Expenses() {
   const [expenses, setExpenses] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [stats, setStats] = useState({
     today: 0,
     thisMonth: 0,
     average: 0,
     monthlyBudget: 35000,
-    monthlyPercentage: 0  // Initialize monthlyPercentage
+    monthlyPercentage: 0
   });
+  const [filterOptions, setFilterOptions] = useState({
+    dateRange: 'all', // all, week, month, custom
+    startDate: '',
+    endDate: '',
+    category: 'all',
+    searchQuery: '',
+    sortBy: 'date', // date, amount, category
+    sortOrder: 'desc' // asc, desc
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Calculate stats from expenses
+  // Add these functions after your existing state declarations
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
+  const isToday = (dateString) => {
+    return dateString === getTodayDate();
+  };
+
+  // Add this function after calculateStats
+  const getTodayExpenses = () => {
+    return expenses.filter(expense => isToday(expense.date));
+  };
+
+  // Modify your calculateStats function to include today's total
   const calculateStats = (expenseData) => {
-    const today = new Date().toISOString().split('T')[0];
-    const thisMonth = new Date().getMonth();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day
     
-    // Today's total
-    const todayExpenses = expenseData.filter(exp => 
-      new Date(exp.date).toISOString().split('T')[0] === today
-    ).reduce((sum, exp) => sum + Math.abs(exp.amount), 0);
+    // Today's total - only count expenses (negative amounts)
+    const todayExpenses = expenseData.filter(exp => {
+      const expDate = new Date(exp.date);
+      expDate.setHours(0, 0, 0, 0);
+      return expDate.getTime() === today.getTime() && exp.type === 'expense';
+    }).reduce((sum, exp) => sum + Math.abs(exp.amount), 0);
 
     // This month's total
+    const thisMonth = today.getMonth();
     const monthExpenses = expenseData.filter(exp => 
-      new Date(exp.date).getMonth() === thisMonth
+      new Date(exp.date).getMonth() === thisMonth && exp.type === 'expense'
     ).reduce((sum, exp) => sum + Math.abs(exp.amount), 0);
 
     // Average daily (last 30 days)
@@ -47,24 +76,46 @@ function Expenses() {
       thisMonth: monthExpenses,
       average: averageDaily,
       monthlyBudget: stats.monthlyBudget,
-      monthlyPercentage: monthlyPercentage || 0  // Provide default value
+      monthlyPercentage: monthlyPercentage || 0
     });
   };
 
-  // Fetch expenses and calculate stats
   const fetchExpenses = async () => {
     try {
-      const response = await fetch('http://localhost:5002/api/transactions', {
+      setIsLoading(true);
+      const queryParams = new URLSearchParams({
+        dateRange: filterOptions.dateRange,
+        startDate: filterOptions.startDate,
+        endDate: filterOptions.endDate,
+        category: filterOptions.category,
+        searchQuery: filterOptions.searchQuery,
+        sortBy: filterOptions.sortBy,
+        sortOrder: filterOptions.sortOrder
+      }).toString();
+
+      const response = await fetch(`http://localhost:5002/api/transactions?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch expenses');
+      }
+
       const data = await response.json();
-      const expenseData = data.filter(transaction => transaction.type === 'expense');
-      setExpenses(expenseData);
-      calculateStats(expenseData);
+      setExpenses(data.transactions);
+      // Update stats with the summary data
+      setStats(prev => ({
+        ...prev,
+        ...data.summary
+      }));
     } catch (error) {
       console.error('Error fetching expenses:', error);
+      setError(error.message || 'Failed to load expenses');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -77,12 +128,23 @@ function Expenses() {
         }
       });
 
-      if (response.ok) {
-        setExpenses(prev => prev.filter(exp => exp._id !== id));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete expense');
       }
+
+      setExpenses(prev => prev.filter(exp => exp._id !== id));
+      // Recalculate stats after deletion
+      calculateStats(expenses.filter(exp => exp._id !== id));
     } catch (error) {
       console.error('Error deleting expense:', error);
+      setError(error.message || 'Failed to delete expense. Please try again.');
     }
+  };
+
+  const handleExpenseAdded = () => {
+    fetchExpenses(); // Refresh expenses list
+    setError(null); // Clear any existing errors
   };
 
   const cleanupTestExpenses = async () => {
@@ -103,20 +165,289 @@ function Expenses() {
     }
   };
 
+  // Filter controls component
+  const FilterControls = () => (
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg mb-6">
+      {/* Filter Header */}
+      <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+            Filter Expenses
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Narrow down your transactions
+          </p>
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        >
+          {showFilters ? (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+            </svg>
+          ) : (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* Filter Content - Collapsible */}
+      {showFilters && (
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Date Range Filter */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Time Period
+              </label>
+              <select
+                value={filterOptions.dateRange}
+                onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+
+            {/* Category Filter */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Category
+              </label>
+              <select
+                value={filterOptions.category}
+                onChange={(e) => handleFilterChange('category', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+              >
+                <option value="all">All Categories</option>
+                {/* Add your categories here */}
+              </select>
+            </div>
+
+            {/* Search Box */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Search
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={filterOptions.searchQuery}
+                  onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
+                  placeholder="Search expenses..."
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+                />
+                <span className="absolute left-3 top-2.5 text-gray-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Date Range */}
+          {filterOptions.dateRange === 'custom' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={filterOptions.startDate}
+                  onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={filterOptions.endDate}
+                  onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Sort Controls */}
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Sort by:</span>
+              <select
+                value={filterOptions.sortBy}
+                onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+              >
+                <option value="date">Date</option>
+                <option value="amount">Amount</option>
+                <option value="category">Category</option>
+              </select>
+              <button
+                onClick={() => handleFilterChange('sortOrder', filterOptions.sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+              >
+                {filterOptions.sortOrder === 'asc' ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9M3 12h5m0 0v8m0-8h2" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h5m0 0v-8m0 8h2" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            
+            <button
+              onClick={() => {
+                setFilterOptions({
+                  dateRange: 'all',
+                  startDate: '',
+                  endDate: '',
+                  category: 'all',
+                  searchQuery: '',
+                  sortBy: 'date',
+                  sortOrder: 'desc'
+                });
+              }}
+              className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+            >
+              Reset Filters
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Filter and sort logic
+  const getFilteredExpenses = () => {
+    let filtered = [...expenses];
+
+    // Apply date filter
+    if (filterOptions.dateRange !== 'all') {
+      const today = new Date();
+      let startDate;
+
+      switch (filterOptions.dateRange) {
+        case 'week':
+          startDate = new Date(today.setDate(today.getDate() - 7));
+          break;
+        case 'month':
+          startDate = new Date(today.setMonth(today.getMonth() - 1));
+          break;
+        case 'custom':
+          if (filterOptions.startDate && filterOptions.endDate) {
+            filtered = filtered.filter(expense => {
+              const expenseDate = new Date(expense.date);
+              return expenseDate >= new Date(filterOptions.startDate) &&
+                     expenseDate <= new Date(filterOptions.endDate);
+            });
+          }
+          break;
+      }
+
+      if (filterOptions.dateRange !== 'custom') {
+        filtered = filtered.filter(expense => new Date(expense.date) >= startDate);
+      }
+    }
+
+    // Apply category filter
+    if (filterOptions.category !== 'all') {
+      filtered = filtered.filter(expense => expense.category === filterOptions.category);
+    }
+
+    // Apply search filter
+    if (filterOptions.searchQuery) {
+      const query = filterOptions.searchQuery.toLowerCase();
+      filtered = filtered.filter(expense =>
+        expense.description.toLowerCase().includes(query) ||
+        expense.category.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (filterOptions.sortBy) {
+        case 'date':
+          return filterOptions.sortOrder === 'asc'
+            ? new Date(a.date) - new Date(b.date)
+            : new Date(b.date) - new Date(a.date);
+        case 'amount':
+          return filterOptions.sortOrder === 'asc'
+            ? a.amount - b.amount
+            : b.amount - a.amount;
+        case 'category':
+          return filterOptions.sortOrder === 'asc'
+            ? a.category.localeCompare(b.category)
+            : b.category.localeCompare(a.category);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilterOptions(prev => ({ ...prev, [key]: value }));
+  };
+
   useEffect(() => {
     fetchExpenses();
-  }, []);
+  }, [filterOptions]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading expenses...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg">
+          {error}
+          <button 
+            onClick={() => { setError(null); fetchExpenses(); }}
+            className="ml-4 text-sm underline hover:text-red-700 dark:hover:text-red-300"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
       {/* Header Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Expenses Manager</h1>
-        <p className="text-gray-600 dark:text-gray-400">Track and manage your daily expenses</p>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-2">
+          Expenses Manager
+        </h1>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+          Track and manage your daily expenses
+        </p>
       </div>
 
+      <FilterControls />
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Today&apos;s Expenses</h3>
@@ -169,14 +500,11 @@ function Expenses() {
                 Add New Expense
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Fill in the details to record a new expense
+                Record your daily expenses
               </p>
             </div>
             <div className="p-6">
-              <ExpenseForm onSuccess={() => {
-                console.log('Expense added, refreshing list...');
-                fetchExpenses();
-              }} />
+              <ExpenseForm onSuccess={handleExpenseAdded} />
             </div>
           </div>
         </div>
@@ -189,7 +517,7 @@ function Expenses() {
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                {expenses.map((expense) => (
+                {getFilteredExpenses().map((expense) => (
                   <div 
                     key={expense._id}
                     className="flex items-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
