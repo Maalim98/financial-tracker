@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatCurrency } from '../../utils/formatCurrency';
+import PropTypes from 'prop-types';
 
 function ExpenseForm({ onSuccess }) {
   const [formData, setFormData] = useState({
@@ -190,5 +190,13 @@ function ExpenseForm({ onSuccess }) {
     </form>
   );
 }
+
+ExpenseForm.propTypes = {
+  onSuccess: PropTypes.func
+};
+
+ExpenseForm.defaultProps = {
+  onSuccess: () => {}
+};
 
 export default ExpenseForm; 

@@ -81,7 +81,7 @@ router.get('/', auth, async (req, res) => {
     // Calculate summary with proper date handling
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set to start of day
-    
+
     const summary = {
       total: transactions.reduce((sum, t) => sum + t.amount, 0),
       count: transactions.length,
@@ -90,7 +90,7 @@ router.get('/', auth, async (req, res) => {
         txDate.setHours(0, 0, 0, 0);
         return txDate.getTime() === today.getTime() && t.type === 'expense';
       }).reduce((sum, t) => sum + Math.abs(t.amount), 0),
-      thisMonth: transactions.filter(t => 
+      thisMonth: transactions.filter(t =>
         new Date(t.date).getMonth() === today.getMonth() && t.type === 'expense'
       ).reduce((sum, t) => sum + Math.abs(t.amount), 0),
       byCategory: {}
@@ -115,9 +115,9 @@ router.get('/', auth, async (req, res) => {
 
   } catch (error) {
     console.error('Get transactions error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Server error',
-      error: error.message 
+      error: error.message
     });
   }
 });
@@ -125,8 +125,8 @@ router.get('/', auth, async (req, res) => {
 // Get available categories
 router.get('/categories', auth, async (req, res) => {
   try {
-    const categories = await Transaction.distinct('category', { 
-      user: req.user.id 
+    const categories = await Transaction.distinct('category', {
+      user: req.user.id
     });
     res.json(categories);
   } catch (error) {
@@ -146,20 +146,22 @@ router.get('/stats', auth, async (req, res) => {
       {
         $facet: {
           today: [
-            { $match: { 
-              date: { 
-                $gte: new Date(today.setHours(0, 0, 0, 0)),
-                $lt: new Date(today.setHours(23, 59, 59, 999))
+            {
+              $match: {
+                date: {
+                  $gte: new Date(today.setHours(0, 0, 0, 0)),
+                  $lt: new Date(today.setHours(23, 59, 59, 999))
+                }
               }
-            }},
-            { $group: { _id: null, total: { $sum: '$amount' } }}
+            },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
           ],
           thisMonth: [
-            { $match: { date: { $gte: firstDayOfMonth } }},
-            { $group: { _id: null, total: { $sum: '$amount' } }}
+            { $match: { date: { $gte: firstDayOfMonth } } },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
           ],
           average: [
-            { $group: { _id: null, avg: { $avg: '$amount' } }}
+            { $group: { _id: null, avg: { $avg: '$amount' } } }
           ]
         }
       }
@@ -180,7 +182,7 @@ router.get('/stats', auth, async (req, res) => {
 // Get expenses only
 router.get('/expenses', auth, async (req, res) => {
   try {
-    const expenses = await Transaction.find({ 
+    const expenses = await Transaction.find({
       user: req.user.id,
       type: 'expense'
     }).sort({ date: -1 });
@@ -202,7 +204,7 @@ router.get('/expenses/summary', auth, async (req, res) => {
     const summary = {
       total: expenses.reduce((sum, exp) => sum + exp.amount, 0),
       count: expenses.length,
-      average: expenses.length ? 
+      average: expenses.length ?
         expenses.reduce((sum, exp) => sum + exp.amount, 0) / expenses.length : 0,
       byCategory: {}
     };
@@ -290,7 +292,7 @@ router.put('/:id', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id);
-    
+
     if (!transaction) {
       return res.status(404).json({ message: 'Transaction not found' });
     }
@@ -311,14 +313,14 @@ router.delete('/:id', auth, async (req, res) => {
 // Add this new route to delete test expenses
 router.delete('/cleanup/test', auth, async (req, res) => {
   try {
-    const result = await Transaction.deleteMany({ 
+    const result = await Transaction.deleteMany({
       user: req.user.id,
       category: "Test Expense"
     });
-    
-    res.json({ 
+
+    res.json({
       message: `Deleted ${result.deletedCount} test transactions`,
-      count: result.deletedCount 
+      count: result.deletedCount
     });
   } catch (error) {
     console.error('Cleanup error:', error);

@@ -1,6 +1,6 @@
 import ExpenseForm from '../components/forms/ExpenseForm';
 import { formatCurrency } from '../utils/formatCurrency';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 function Expenses() {
   const [expenses, setExpenses] = useState([]);
@@ -23,19 +23,11 @@ function Expenses() {
     sortOrder: 'desc' // asc, desc
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   // Add these functions after your existing state declarations
   const getTodayDate = () => {
     return new Date().toISOString().split('T')[0];
-  };
-
-  const isToday = (dateString) => {
-    return dateString === getTodayDate();
-  };
-
-  // Add this function after calculateStats
-  const getTodayExpenses = () => {
-    return expenses.filter(expense => isToday(expense.date));
   };
 
   // Modify your calculateStats function to include today's total
@@ -83,37 +75,47 @@ function Expenses() {
   const fetchExpenses = async () => {
     try {
       setIsLoading(true);
-      const queryParams = new URLSearchParams({
-        dateRange: filterOptions.dateRange,
-        startDate: filterOptions.startDate,
-        endDate: filterOptions.endDate,
-        category: filterOptions.category,
-        searchQuery: filterOptions.searchQuery,
-        sortBy: filterOptions.sortBy,
-        sortOrder: filterOptions.sortOrder
-      }).toString();
+      setError(null);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
 
-      const response = await fetch(`http://localhost:5002/api/transactions?${queryParams}`, {
+      const response = await fetch('http://localhost:5002/api/transactions', {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        throw new Error('Session expired. Please login again.');
+      }
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch expenses');
+        throw new Error('Failed to fetch expenses');
       }
 
       const data = await response.json();
-      setExpenses(data.transactions);
-      // Update stats with the summary data
-      setStats(prev => ({
-        ...prev,
-        ...data.summary
-      }));
+      const expenseTransactions = data.transactions.filter(t => t.type === 'expense');
+      setExpenses(expenseTransactions);
+
+      if (data.summary) {
+        setStats(prev => ({
+          ...prev,
+          today: data.summary.today || 0,
+          thisMonth: data.summary.thisMonth || 0,
+          monthlyPercentage: (data.summary.thisMonth / prev.monthlyBudget) * 100 || 0
+        }));
+      }
     } catch (error) {
       console.error('Error fetching expenses:', error);
-      setError(error.message || 'Failed to load expenses');
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -145,24 +147,6 @@ function Expenses() {
   const handleExpenseAdded = () => {
     fetchExpenses(); // Refresh expenses list
     setError(null); // Clear any existing errors
-  };
-
-  const cleanupTestExpenses = async () => {
-    try {
-      const response = await fetch('http://localhost:5002/api/transactions/cleanup/test', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (response.ok) {
-        // Refresh the expenses list
-        fetchExpenses();
-      }
-    } catch (error) {
-      console.error('Error cleaning up test expenses:', error);
-    }
   };
 
   // Filter controls component
@@ -333,73 +317,9 @@ function Expenses() {
   );
 
   // Filter and sort logic
-  const getFilteredExpenses = () => {
-    let filtered = [...expenses];
-
-    // Apply date filter
-    if (filterOptions.dateRange !== 'all') {
-      const today = new Date();
-      let startDate;
-
-      switch (filterOptions.dateRange) {
-        case 'week':
-          startDate = new Date(today.setDate(today.getDate() - 7));
-          break;
-        case 'month':
-          startDate = new Date(today.setMonth(today.getMonth() - 1));
-          break;
-        case 'custom':
-          if (filterOptions.startDate && filterOptions.endDate) {
-            filtered = filtered.filter(expense => {
-              const expenseDate = new Date(expense.date);
-              return expenseDate >= new Date(filterOptions.startDate) &&
-                     expenseDate <= new Date(filterOptions.endDate);
-            });
-          }
-          break;
-      }
-
-      if (filterOptions.dateRange !== 'custom') {
-        filtered = filtered.filter(expense => new Date(expense.date) >= startDate);
-      }
-    }
-
-    // Apply category filter
-    if (filterOptions.category !== 'all') {
-      filtered = filtered.filter(expense => expense.category === filterOptions.category);
-    }
-
-    // Apply search filter
-    if (filterOptions.searchQuery) {
-      const query = filterOptions.searchQuery.toLowerCase();
-      filtered = filtered.filter(expense =>
-        expense.description.toLowerCase().includes(query) ||
-        expense.category.toLowerCase().includes(query)
-      );
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (filterOptions.sortBy) {
-        case 'date':
-          return filterOptions.sortOrder === 'asc'
-            ? new Date(a.date) - new Date(b.date)
-            : new Date(b.date) - new Date(a.date);
-        case 'amount':
-          return filterOptions.sortOrder === 'asc'
-            ? a.amount - b.amount
-            : b.amount - a.amount;
-        case 'category':
-          return filterOptions.sortOrder === 'asc'
-            ? a.category.localeCompare(b.category)
-            : b.category.localeCompare(a.category);
-        default:
-          return 0;
-      }
-    });
-
-    return filtered;
-  };
+  const getFilteredExpenses = useCallback(() => {
+    return expenses;
+  }, [expenses]);
 
   const handleFilterChange = (key, value) => {
     setFilterOptions(prev => ({ ...prev, [key]: value }));
@@ -509,60 +429,92 @@ function Expenses() {
           </div>
         </div>
 
-        {/* Recent Expenses List */}
+        {/* Recent Expenses Card */}
         <div className="lg:col-span-3">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-white">Recent Expenses</h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-white">Recent Expenses</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Your latest spending activity</p>
+                </div>
+              </div>
             </div>
+
             <div className="p-6">
-              <div className="space-y-4">
-                {getFilteredExpenses().map((expense) => (
-                  <div 
-                    key={expense._id}
-                    className="flex items-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8">
+                  <div className="text-red-500 mb-2">⚠️ {error}</div>
+                  <button 
+                    onClick={fetchExpenses}
+                    className="text-indigo-600 hover:text-indigo-700 font-medium"
                   >
-                    <div className="p-3 bg-gray-100 dark:bg-gray-600 rounded-lg mr-4">
-                      <span className="text-2xl">{expense.icon}</span>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <div>
-                          <p className="font-semibold text-gray-800 dark:text-gray-200">{expense.category}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{expense.description}</p>
+                    Try Again
+                  </button>
+                </div>
+              ) : expenses.length > 0 ? (
+                <div className="space-y-4">
+                  {expenses.map((expense) => (
+                    <div 
+                      key={expense._id} 
+                      className="flex items-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group"
+                    >
+                      <div className="h-12 w-12 flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/30 rounded-xl mr-4">
+                        <span className="text-2xl">{expense.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <div>
+                            <h3 className="font-semibold text-gray-800 dark:text-gray-200">
+                              {expense.category}
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {expense.description}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <p className="font-bold text-red-600 dark:text-red-400">
+                              {formatCurrency(Math.abs(expense.amount))}
+                            </p>
+                            <button
+                              onClick={() => handleDeleteExpense(expense._id)}
+                              className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-all duration-200"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-4">
-                          <p className="font-bold text-red-600 dark:text-red-400">
-                            {formatCurrency(Math.abs(expense.amount))}
-                          </p>
-                          <button
-                            onClick={() => handleDeleteExpense(expense._id)}
-                            className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
+                        <div className="flex items-center text-sm text-gray-400 dark:text-gray-500">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          {new Date(expense.date).toLocaleDateString()}
                         </div>
                       </div>
-                      <p className="text-sm text-gray-400 dark:text-gray-500">
-                        {new Date(expense.date).toLocaleDateString()}
-                      </p>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-4">💸</div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    No expenses yet
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-6">
+                    Start tracking your expenses by adding your first expense
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      <button 
-        onClick={cleanupTestExpenses}
-        className="px-4 py-2 bg-red-600 text-white rounded-lg"
-      >
-        Clean Up Test Expenses
-      </button>
     </div>
   );
 }

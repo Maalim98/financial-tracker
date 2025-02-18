@@ -11,10 +11,7 @@ const transactionRoutes = require('./routes/transactions');
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: 'http://localhost:5173', // Your frontend URL
-  credentials: true
-}));
+app.use(cors());  // Use default CORS settings
 app.use(express.json());
 
 // Connect to MongoDB with better error handling
@@ -50,9 +47,18 @@ app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/transactions', transactionRoutes);
 
-// Basic route
+// Add a health check route
 app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to FinTrack API' });
+  res.json({ status: 'ok', message: 'FinTrack API is running' });
+});
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    message: 'Something broke!',
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+  });
 });
 
 // Start server with error handling
