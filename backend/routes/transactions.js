@@ -243,7 +243,7 @@ router.post('/', auth, async (req, res) => {
       user: req.user.id,
       type,
       category,
-      amount,  // Store the amount as is (positive for income, negative for expense)
+      amount: Math.abs(amount), // Always store positive amounts
       description,
       date: date || Date.now(),
       icon

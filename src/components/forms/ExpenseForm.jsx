@@ -7,22 +7,32 @@ function ExpenseForm({ onSuccess }) {
     amount: '',
     date: new Date().toISOString().split('T')[0],
     description: '',
-    icon: ''
+    icon: '',
+    type: 'daily' // Add type to distinguish between daily and bills
   });
   
   // Add error state
   const [errors, setErrors] = useState({});
 
-  const categories = [
-    { id: 'food', label: 'Food & Dining', icon: '🍽️' },
-    { id: 'transport', label: 'Transportation', icon: '🚗' },
-    { id: 'utilities', label: 'Utilities', icon: '⚡' },
-    { id: 'rent', label: 'Rent', icon: '🏠' },
-    { id: 'shopping', label: 'Shopping', icon: '🛍️' },
-    { id: 'entertainment', label: 'Entertainment', icon: '🎬' },
-    { id: 'health', label: 'Healthcare', icon: '🏥' },
-    { id: 'other', label: 'Other', icon: '📌' },
-  ];
+  // Split categories into daily expenses and bills
+  const categories = {
+    daily: [
+      { id: 'food', label: 'Food & Dining', icon: '🍽️' },
+      { id: 'transport', label: 'Transportation', icon: '🚗' },
+      { id: 'shopping', label: 'Shopping', icon: '🛍️' },
+      { id: 'entertainment', label: 'Entertainment', icon: '🎬' },
+      { id: 'health', label: 'Healthcare', icon: '🏥' },
+      { id: 'other', label: 'Other', icon: '📌' },
+    ],
+    bills: [
+      { id: 'rent', label: 'Rent', icon: '🏠' },
+      { id: 'utilities', label: 'Utilities', icon: '⚡' },
+      { id: 'internet', label: 'Internet', icon: '🌐' },
+      { id: 'phone', label: 'Phone Bill', icon: '📱' },
+      { id: 'insurance', label: 'Insurance', icon: '🔒' },
+      { id: 'subscription', label: 'Subscriptions', icon: '📺' },
+    ]
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -30,7 +40,7 @@ function ExpenseForm({ onSuccess }) {
     setErrors(prev => ({ ...prev, [name]: '' }));
 
     if (name === 'category') {
-      const selectedCategory = categories.find(cat => cat.id === value);
+      const selectedCategory = categories[formData.type].find(cat => cat.id === value);
       setFormData(prev => ({
         ...prev,
         [name]: value,
@@ -55,7 +65,8 @@ function ExpenseForm({ onSuccess }) {
       console.log('Submitting expense...'); // Debug log
       const submitData = {
         type: 'expense',
-        category: categories.find(cat => cat.id === formData.category)?.label || formData.category,
+        expenseType: formData.type, // Add expense type (daily/bill)
+        category: categories[formData.type].find(cat => cat.id === formData.category)?.label || formData.category,
         amount: -Math.abs(Number(formData.amount)),
         description: formData.description,
         date: formData.date,
@@ -85,7 +96,8 @@ function ExpenseForm({ onSuccess }) {
         amount: '',
         date: new Date().toISOString().split('T')[0],
         description: '',
-        icon: ''
+        icon: '',
+        type: 'daily'
       });
 
       if (onSuccess) {
@@ -108,10 +120,36 @@ function ExpenseForm({ onSuccess }) {
         </div>
       )}
       
+      {/* Expense Type Toggle */}
+      <div className="flex space-x-4 mb-4">
+        <button
+          type="button"
+          onClick={() => setFormData(prev => ({ ...prev, type: 'daily' }))}
+          className={`flex-1 py-2 px-4 rounded-lg ${
+            formData.type === 'daily'
+              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+          }`}
+        >
+          Daily Expenses
+        </button>
+        <button
+          type="button"
+          onClick={() => setFormData(prev => ({ ...prev, type: 'bills' }))}
+          className={`flex-1 py-2 px-4 rounded-lg ${
+            formData.type === 'bills'
+              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+          }`}
+        >
+          Bills
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Category
+            {formData.type === 'daily' ? 'Expense Category' : 'Bill Type'}
           </label>
           <select
             name="category"
@@ -121,7 +159,7 @@ function ExpenseForm({ onSuccess }) {
             required
           >
             <option value="">Select a category</option>
-            {categories.map(category => (
+            {categories[formData.type].map(category => (
               <option key={category.id} value={category.id}>
                 {category.icon} {category.label}
               </option>
@@ -185,7 +223,7 @@ function ExpenseForm({ onSuccess }) {
         type="submit"
         className="w-full bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform transition-all duration-200 hover:scale-[1.02]"
       >
-        Add Expense
+        Add {formData.type === 'daily' ? 'Expense' : 'Bill'}
       </button>
     </form>
   );

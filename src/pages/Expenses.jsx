@@ -10,7 +10,7 @@ function Expenses() {
     today: 0,
     thisMonth: 0,
     average: 0,
-    monthlyBudget: 35000,
+    monthlyBudget: 50000,
     monthlyPercentage: 0
   });
   const [filterOptions, setFilterOptions] = useState({
@@ -24,6 +24,11 @@ function Expenses() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [monthlyBills, setMonthlyBills] = useState({
+    total: 0,
+    items: [],
+    dueDate: null
+  });
 
   // Add these functions after your existing state declarations
   const getTodayDate = () => {
@@ -72,6 +77,33 @@ function Expenses() {
     });
   };
 
+  const calculateMonthlyBills = (allExpenses) => {
+    const today = new Date();
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const isLastDayOfMonth = today.getDate() === lastDayOfMonth;
+
+    // Filter bills from all expenses
+    const bills = allExpenses.filter(exp => exp.expenseType === 'bills');
+    
+    // Calculate total bills
+    const billsTotal = bills.reduce((sum, bill) => sum + Math.abs(bill.amount), 0);
+
+    setMonthlyBills({
+      total: billsTotal,
+      items: bills,
+      dueDate: lastDayOfMonth
+    });
+
+    // If it's the last day of the month, show bills summary
+    if (isLastDayOfMonth) {
+      // You could trigger a notification or summary display here
+      console.log('Monthly Bills Summary:', {
+        total: billsTotal,
+        breakdown: bills
+      });
+    }
+  };
+
   const fetchExpenses = async () => {
     try {
       setIsLoading(true);
@@ -113,6 +145,8 @@ function Expenses() {
           monthlyPercentage: (data.summary.thisMonth / prev.monthlyBudget) * 100 || 0
         }));
       }
+
+      calculateMonthlyBills(data.transactions);
     } catch (error) {
       console.error('Error fetching expenses:', error);
       setError(error.message);
@@ -123,24 +157,23 @@ function Expenses() {
 
   const handleDeleteExpense = async (id) => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
       const response = await fetch(`http://localhost:5002/api/transactions/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete expense');
+      if (response.ok) {
+        setExpenses(prev => prev.filter(exp => exp._id !== id));
+        // Refetch to update stats
+        fetchExpenses();
       }
-
-      setExpenses(prev => prev.filter(exp => exp._id !== id));
-      // Recalculate stats after deletion
-      calculateStats(expenses.filter(exp => exp._id !== id));
     } catch (error) {
       console.error('Error deleting expense:', error);
-      setError(error.message || 'Failed to delete expense. Please try again.');
     }
   };
 
@@ -363,6 +396,26 @@ function Expenses() {
           Track and manage your daily expenses
         </p>
       </div>
+
+      {/* Bills Summary Section - Shows on last day of month */}
+      {new Date().getDate() === monthlyBills.dueDate && (
+        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-xl border border-yellow-200 dark:border-yellow-800">
+          <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+            Monthly Bills Due Today
+          </h3>
+          <p className="text-yellow-700 dark:text-yellow-300">
+            Total Amount Due: {formatCurrency(monthlyBills.total)}
+          </p>
+          <div className="mt-3 space-y-2">
+            {monthlyBills.items.map((bill, index) => (
+              <div key={index} className="flex justify-between text-sm">
+                <span>{bill.category}</span>
+                <span>{formatCurrency(Math.abs(bill.amount))}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <FilterControls />
 
