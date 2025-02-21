@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import PropTypes from 'prop-types';
 
 const ThemeContext = createContext();
 
@@ -46,7 +47,7 @@ export function ThemeProvider({ children }) {
           throw new Error('Failed to update theme preference');
         }
 
-        const data = await response.json();
+        await response.json(); // Add this to handle the response
         // Update the user data in context with the new preferences
         updateUser({
           ...user,
@@ -58,7 +59,7 @@ export function ThemeProvider({ children }) {
       }
     } catch (error) {
       console.error('Error updating theme:', error);
-      setDarkMode(!newDarkMode); // Revert on error
+      setDarkMode(darkMode); // Use current darkMode value instead of newDarkMode
     }
   };
 
@@ -68,6 +69,10 @@ export function ThemeProvider({ children }) {
     </ThemeContext.Provider>
   );
 }
+
+ThemeProvider.propTypes = {
+  children: PropTypes.node.isRequired
+};
 
 export function useTheme() {
   const context = useContext(ThemeContext);
