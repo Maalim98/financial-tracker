@@ -3,10 +3,13 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
 
 const authRoutes = require('./routes/auth');
 const protectedRoutes = require('./routes/protected');
 const transactionRoutes = require('./routes/transactions');
+const profileRoutes = require('./routes/profile');
 
 const app = express();
 
@@ -44,8 +47,16 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/profile', profileRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/transactions', transactionRoutes);
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Create uploads directory if it doesn't exist
+const uploadDir = path.join(__dirname, 'uploads', 'avatars');
+fs.mkdirSync(uploadDir, { recursive: true });
 
 // Add a health check route
 app.get('/', (req, res) => {
@@ -53,7 +64,7 @@ app.get('/', (req, res) => {
 });
 
 // Add error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error(err.stack);
   res.status(500).json({ 
     message: 'Something broke!',
