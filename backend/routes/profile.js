@@ -1,3 +1,5 @@
+/* eslint-env node, commonjs */
+/* global require, module */
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');

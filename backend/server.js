@@ -1,4 +1,5 @@
-/* eslint-disable no-undef */
+/* eslint-env node, commonjs */
+/* global require, module, process, __dirname */
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -63,8 +64,8 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'FinTrack API is running' });
 });
 
-// Add error handling middleware
-app.use((err, req, res, _next) => {
+// Update error handling middleware
+app.use((err, req, res) => {  // Remove unused _next parameter
   console.error(err.stack);
   res.status(500).json({ 
     message: 'Something broke!',

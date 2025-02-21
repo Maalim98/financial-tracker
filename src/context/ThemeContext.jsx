@@ -1,27 +1,65 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
+  const { user, updateUser } = useAuth();
   const [darkMode, setDarkMode] = useState(() => {
-    // Check local storage or system preference on initial load
-    const savedTheme = localStorage.getItem('theme');
-    return savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    // Start with light mode and then check user preference
+    if (user?.preferences?.darkMode !== undefined) {
+      return user.preferences.darkMode;
+    }
+    return false;
   });
 
+  // Update document class when darkMode changes
   useEffect(() => {
-    // Update document class and local storage when darkMode changes
+    const root = document.documentElement;
     if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      root.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      root.classList.remove('dark');
     }
   }, [darkMode]);
 
-  const toggleDarkMode = () => {
-    setDarkMode(prev => !prev);
+  const toggleDarkMode = async () => {
+    try {
+      const newDarkMode = !darkMode;
+      setDarkMode(newDarkMode); // Update UI immediately
+
+      if (user) {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5002/api/profile/preferences', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            ...user.preferences,
+            darkMode: newDarkMode
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update theme preference');
+        }
+
+        const data = await response.json();
+        // Update the user data in context with the new preferences
+        updateUser({
+          ...user,
+          preferences: {
+            ...user.preferences,
+            darkMode: newDarkMode
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error updating theme:', error);
+      setDarkMode(!newDarkMode); // Revert on error
+    }
   };
 
   return (

@@ -56,17 +56,17 @@ function SpendingOverview() {
         if (!response.ok) throw new Error('Failed to fetch expenses');
 
         const data = await response.json();
-        
+
         // Filter for current month's expenses
         const currentDate = new Date();
         const currentMonth = currentDate.getMonth();
         const currentYear = currentDate.getFullYear();
-        
+
         const monthlyExpenses = data.transactions.filter(transaction => {
           const expenseDate = new Date(transaction.date);
-          return expenseDate.getMonth() === currentMonth && 
-                 expenseDate.getFullYear() === currentYear &&
-                 transaction.type === 'expense';
+          return expenseDate.getMonth() === currentMonth &&
+            expenseDate.getFullYear() === currentYear &&
+            transaction.type === 'expense';
         });
 
         // Group by category

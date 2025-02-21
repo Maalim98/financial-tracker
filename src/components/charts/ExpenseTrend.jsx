@@ -42,7 +42,7 @@ function ExpenseTrend() {
         if (!response.ok) throw new Error('Failed to fetch trend data');
 
         const data = await response.json();
-        
+
         // Process the data for the chart
         const months = Object.keys(data).sort();
         const monthLabels = months.map(month => {
@@ -99,7 +99,7 @@ function ExpenseTrend() {
       },
       tooltip: {
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             return `${context.dataset.label}: ${formatCurrency(context.raw)}`;
           }
         }

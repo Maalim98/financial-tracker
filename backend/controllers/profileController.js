@@ -90,6 +90,7 @@ const updatePassword = async (req, res) => {
 const updatePreferences = async (req, res) => {
   try {
     const { darkMode, emailNotifications, currency } = req.body;
+    console.log('Updating preferences:', { darkMode, emailNotifications, currency });
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
@@ -104,6 +105,7 @@ const updatePreferences = async (req, res) => {
       { new: true }
     ).select('-password');
 
+    console.log('Updated user:', updatedUser);
     res.json(updatedUser);
   } catch (error) {
     console.error('Update preferences error:', error);
@@ -193,23 +195,25 @@ const deleteAvatar = async (req, res) => {
       } catch (error) {
         console.error('Error deleting avatar file:', error);
       }
+
+      const updatedUser = await User.findByIdAndUpdate(
+        req.user.id,
+        {
+          $set: {
+            avatar: '',
+            updatedAt: Date.now()
+          }
+        },
+        { new: true }
+      ).select('-password');
+
+      return res.json({
+        message: 'Avatar deleted successfully',
+        user: updatedUser
+      });
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user.id,
-      {
-        $set: {
-          avatar: '',
-          updatedAt: Date.now()
-        }
-      },
-      { new: true }
-    ).select('-password');
-
-    res.json({
-      message: 'Avatar deleted successfully',
-      user: updatedUser
-    });
+    res.status(400).json({ message: 'No avatar to delete' });
   } catch (error) {
     console.error('Delete avatar error:', error);
     res.status(500).json({ message: 'Server error' });
