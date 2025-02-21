@@ -328,4 +328,43 @@ router.delete('/cleanup/test', auth, async (req, res) => {
   }
 });
 
+// Add this inside your existing routes
+router.get('/trends', auth, async (req, res) => {
+  try {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    
+    const transactions = await Transaction.find({
+      user: req.user.id,
+      date: { $gte: sixMonthsAgo }
+    });
+
+    // Group by month
+    const monthlyData = transactions.reduce((acc, transaction) => {
+      const date = new Date(transaction.date);
+      const monthYear = `${date.getFullYear()}-${date.getMonth() + 1}`;
+      
+      if (!acc[monthYear]) {
+        acc[monthYear] = {
+          expenses: 0,
+          income: 0
+        };
+      }
+
+      if (transaction.type === 'expense') {
+        acc[monthYear].expenses += Math.abs(transaction.amount);
+      } else {
+        acc[monthYear].income += transaction.amount;
+      }
+
+      return acc;
+    }, {});
+
+    res.json(monthlyData);
+  } catch (error) {
+    console.error('Get trends error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router; 

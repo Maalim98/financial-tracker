@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -20,18 +21,62 @@ ChartJS.register(
 );
 
 function ExpenseTrend() {
+  const [trendData, setTrendData] = useState({
+    labels: [],
+    expenses: [],
+    income: []
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchTrendData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5002/api/transactions/trends', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch trend data');
+
+        const data = await response.json();
+        
+        // Process the data for the chart
+        const months = Object.keys(data).sort();
+        const monthLabels = months.map(month => {
+          const [year, monthNum] = month.split('-');
+          return new Date(year, monthNum - 1).toLocaleString('default', { month: 'short' });
+        });
+
+        setTrendData({
+          labels: monthLabels,
+          expenses: months.map(month => data[month].expenses),
+          income: months.map(month => data[month].income)
+        });
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTrendData();
+  }, []);
+
   const data = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    labels: trendData.labels,
     datasets: [
       {
         label: 'Monthly Expenses',
-        data: [15000, 18000, 22600, 19500, 21000, 22600],
+        data: trendData.expenses,
         backgroundColor: 'rgba(239, 68, 68, 0.8)',
         borderRadius: 8,
       },
       {
         label: 'Monthly Income',
-        data: [35000, 35000, 35000, 35000, 35000, 35000],
+        data: trendData.income,
         backgroundColor: 'rgba(34, 197, 94, 0.8)',
         borderRadius: 8,
       }
@@ -82,6 +127,9 @@ function ExpenseTrend() {
     }
   };
 
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
       <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
@@ -94,13 +142,13 @@ function ExpenseTrend() {
         <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg">
           <p className="text-sm text-gray-600 dark:text-gray-400">Average Income</p>
           <p className="text-lg font-bold text-green-600 dark:text-green-400">
-            {formatCurrency(35000)}
+            {formatCurrency(trendData.income.reduce((a, b) => a + b, 0) / trendData.income.length || 0)}
           </p>
         </div>
         <div className="bg-red-50 dark:bg-red-900/30 p-3 rounded-lg">
           <p className="text-sm text-gray-600 dark:text-gray-400">Average Expenses</p>
           <p className="text-lg font-bold text-red-600 dark:text-red-400">
-            {formatCurrency(19783)}
+            {formatCurrency(trendData.expenses.reduce((a, b) => a + b, 0) / trendData.expenses.length || 0)}
           </p>
         </div>
       </div>

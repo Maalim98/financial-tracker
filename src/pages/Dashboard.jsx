@@ -9,7 +9,15 @@ import { useState, useEffect } from 'react';
 function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [summaryData, setSummaryData] = useState({
+    totalBalance: 0,
+    monthlyIncome: 0,
+    monthlyExpenses: 0,
+    percentChange: 0,
+    expenseRatio: 0,
+    lastUpdated: null
+  });
 
   const fetchTransactions = async () => {
     try {
@@ -27,6 +35,56 @@ function Dashboard() {
       const data = await response.json();
       // Check if data is in the new format (with transactions and summary)
       setTransactions(Array.isArray(data) ? data : data.transactions || []);
+
+      // Get current month's data
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      
+      const monthlyTransactions = data.transactions.filter(transaction => {
+        const txDate = new Date(transaction.date);
+        return txDate.getMonth() === currentMonth && 
+               txDate.getFullYear() === currentYear;
+      });
+
+      // Calculate monthly totals
+      const monthlyIncome = monthlyTransactions
+        .filter(tx => tx.type === 'income')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+
+      const monthlyExpenses = monthlyTransactions
+        .filter(tx => tx.type === 'expense')
+        .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
+      // Calculate total balance (all time)
+      const totalBalance = Math.max(0, data.transactions.reduce((sum, tx) => {
+        return tx.type === 'income' ? sum + tx.amount : sum - Math.abs(tx.amount);
+      }, 0));
+
+      // Calculate month-over-month change
+      const lastMonth = new Date(currentYear, currentMonth - 1);
+      const lastMonthTransactions = data.transactions.filter(transaction => {
+        const txDate = new Date(transaction.date);
+        return txDate.getMonth() === lastMonth.getMonth() && 
+               txDate.getFullYear() === lastMonth.getFullYear();
+      });
+
+      const lastMonthBalance = lastMonthTransactions.reduce((sum, tx) => {
+        return tx.type === 'income' ? sum + tx.amount : sum - Math.abs(tx.amount);
+      }, 0);
+
+      const percentChange = lastMonthBalance ? 
+        ((totalBalance - lastMonthBalance) / Math.abs(lastMonthBalance)) * 100 : 0;
+
+      setSummaryData({
+        totalBalance,
+        monthlyIncome,
+        monthlyExpenses,
+        percentChange,
+        expenseRatio: monthlyIncome ? (monthlyExpenses / monthlyIncome) * 100 : 0,
+        lastUpdated: new Date()
+      });
+
     } catch (error) {
       console.error('Error fetching transactions:', error);
       setTransactions([]); // Set empty array on error
@@ -60,78 +118,60 @@ function Dashboard() {
     fetchTransactions();
   }, []);
 
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <div className="p-6">
-      {/* Welcome Section */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
           Welcome back, {user?.name || 'User'}! 👋
         </h1>
         <p className="text-gray-600 dark:text-gray-400">Here&apos;s your financial overview</p>
       </div>
 
-      {/* Dashboard Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {/* Total Balance Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-lg p-6 border border-indigo-400/20 hover:shadow-xl transition-shadow duration-300">
-          <div className="absolute top-0 right-0 w-32 h-32 transform translate-x-8 -translate-y-8">
-            <svg className="w-full h-full text-indigo-400/20" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="relative">
-            <h3 className="text-lg font-medium text-white/80">Total Balance</h3>
-            <p className="text-3xl font-bold text-white mt-2 mb-1">{formatCurrency(52400)}</p>
-            <div className="inline-flex items-center text-sm text-white/80 bg-indigo-500/30 px-2 py-1 rounded-lg">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              +2.5% from last month
-            </div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Balance */}
+        <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white">
+          <h2 className="text-lg font-medium text-white/80">Total Balance</h2>
+          <p className="text-3xl font-bold mt-2 mb-1">
+            {formatCurrency(summaryData.totalBalance)}
+          </p>
+          <div className="flex items-center text-sm text-white/80">
+            <span className={`mr-1 ${summaryData.percentChange >= 0 ? '↑' : '↓'}`}>
+              {Math.abs(summaryData.percentChange).toFixed(1)}%
+            </span>
+            from last month
           </div>
         </div>
 
-        {/* Monthly Income Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6 border border-emerald-400/20 hover:shadow-xl transition-shadow duration-300">
-          <div className="absolute top-0 right-0 w-32 h-32 transform translate-x-8 -translate-y-8">
-            <svg className="w-full h-full text-emerald-400/20" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M7 11l5-5m0 0l5 5m-5-5v12" />
-            </svg>
-          </div>
-          <div className="relative">
-            <h3 className="text-lg font-medium text-white/80">Monthly Income</h3>
-            <p className="text-3xl font-bold text-white mt-2 mb-1">{formatCurrency(35000)}</p>
-            <div className="inline-flex items-center text-sm text-white/80 bg-emerald-500/30 px-2 py-1 rounded-lg">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Last updated today
-            </div>
+        {/* Monthly Income */}
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white">
+          <h2 className="text-lg font-medium text-white/80">Monthly Income</h2>
+          <p className="text-3xl font-bold mt-2 mb-1">
+            {formatCurrency(summaryData.monthlyIncome)}
+          </p>
+          <div className="text-sm text-white/80">
+            Last updated {summaryData.lastUpdated?.toLocaleDateString()}
           </div>
         </div>
 
-        {/* Monthly Expenses Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-red-500 to-red-600 rounded-2xl shadow-lg p-6 border border-red-400/20 hover:shadow-xl transition-shadow duration-300">
-          <div className="absolute top-0 right-0 w-32 h-32 transform translate-x-8 -translate-y-8">
-            <svg className="w-full h-full text-red-400/20" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M17 13l-5 5m0 0l-5-5m5 5V6" />
-            </svg>
-          </div>
-          <div className="relative">
-            <h3 className="text-lg font-medium text-white/80">Monthly Expenses</h3>
-            <p className="text-3xl font-bold text-white mt-2 mb-1">{formatCurrency(22600)}</p>
-            <div className="inline-flex items-center text-sm text-white/80 bg-red-500/30 px-2 py-1 rounded-lg">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-              </svg>
-              64.5% of income
-            </div>
+        {/* Monthly Expenses */}
+        <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white">
+          <h2 className="text-lg font-medium text-white/80">Monthly Expenses</h2>
+          <p className="text-3xl font-bold mt-2 mb-1">
+            {formatCurrency(summaryData.monthlyExpenses)}
+          </p>
+          <div className="text-sm text-white/80">
+            {summaryData.expenseRatio.toFixed(1)}% of income
           </div>
         </div>
       </div>
 
-      {/* Two Most Important Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SpendingOverview />
         <ExpenseTrend />
       </div>
